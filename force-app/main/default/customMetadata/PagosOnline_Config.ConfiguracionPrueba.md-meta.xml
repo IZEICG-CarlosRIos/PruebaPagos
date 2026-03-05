@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>ConfiguracionPrueba</label>
+    <protected>false</protected>
+    <values>
+        <field>AESKeyHex__c</field>
+        <value xsi:type="xsd:string">5DCC67393750523CD165F17E1EFADD21</value>
+    </values>
+    <values>
+        <field>BranchId__c</field>
+        <value xsi:type="xsd:string">01SNBXBRNCH</value>
+    </values>
+    <values>
+        <field>CompanyId__c</field>
+        <value xsi:type="xsd:string">SNBX</value>
+    </values>
+    <values>
+        <field>Data0__c</field>
+        <value xsi:type="xsd:string">SNDBX123</value>
+    </values>
+    <values>
+        <field>GeneratePath__c</field>
+        <value xsi:type="xsd:string">/gen</value>
+    </values>
+    <values>
+        <field>Password__c</field>
+        <value xsi:type="xsd:string">SECRETO</value>
+    </values>
+    <values>
+        <field>User__c</field>
+        <value xsi:type="xsd:string">SNBXUSR0123</value>
+    </values>
+</CustomMetadata>
