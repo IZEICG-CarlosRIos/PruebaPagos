@@ -4,12 +4,7 @@ global without sharing class PaymentLinkCallbackApi {
 
     @HttpPost
     global static void receive() {
-        RestResponse res = RestContext.response;
-        if (res == null) {
-            res = new RestResponse();
-            RestContext.response = res;
-        }
-        res.addHeader('Content-Type', 'application/json');
+        ensureJsonResponse();
 
         try {
             RestRequest req = RestContext.request;
@@ -17,79 +12,121 @@ global without sharing class PaymentLinkCallbackApi {
             String normalizedPayload = normalizePayload(rawBody, req);
             Map<String, String> values = extractValues(normalizedPayload);
 
-            String reference = firstNonBlank(
-                new List<String>{
-                    values.get('reference'),
-                    values.get('referencia'),
-                    values.get('nb_referencia'),
-                    values.get('id_referencia'),
-                    values.get('orderid'),
-                    values.get('folio')
-                }
-            );
+            String reference = resolveReference(values);
 
             if (String.isBlank(reference)) {
                 setResponse(400, false, 'Referencia no encontrada en callback.', null);
                 return;
             }
 
-            List<Payment_Link__c> links = [
-                SELECT
-                    Id,
-                    Reference__c,
-                    Status__c,
-                    Provider_Transaction_ID__c,
-                    Raw_Response__c
-                FROM Payment_Link__c
-                WHERE Reference__c = :reference
-                LIMIT 1
-            ];
-
-            if (links.isEmpty()) {
+            Payment_Link__c link = findPaymentLink(reference);
+            if (link == null) {
                 setResponse(404, false, 'No existe referencia ' + reference + '.', null);
                 return;
             }
 
-            Payment_Link__c link = links[0];
-
-            String providerStatusRaw = firstNonBlank(
-                new List<String>{
-                    values.get('status'),
-                    values.get('estatus'),
-                    values.get('result'),
-                    values.get('resultado'),
-                    values.get('response_code'),
-                    values.get('response')
-                }
-            );
+            String providerStatusRaw = resolveProviderStatusRaw(values);
             String mappedStatus = mapProviderStatus(providerStatusRaw);
-
-            String providerTransactionId = firstNonBlank(
-                new List<String>{
-                    values.get('id_transaccion'),
-                    values.get('idtransaccion'),
-                    values.get('transaction_id'),
-                    values.get('transactionid'),
-                    values.get('id_operacion'),
-                    values.get('idoperacion'),
-                    values.get('auth')
-                }
+            String providerTransactionId = resolveProviderTransactionId(values);
+            applyCallbackToPaymentLink(
+                link,
+                reference,
+                providerStatusRaw,
+                mappedStatus,
+                providerTransactionId,
+                rawBody,
+                normalizedPayload
             );
-
-            if (!String.isBlank(providerTransactionId)) {
-                link.Provider_Transaction_ID__c = providerTransactionId;
-            }
-            link.Status__c = mappedStatus;
-            link.Raw_Response__c = PolUtil.appendAudit(
-                link.Raw_Response__c,
-                buildAuditEntry(reference, providerStatusRaw, mappedStatus, rawBody, normalizedPayload)
-            );
-            update link;
 
             setResponse(200, true, 'Callback procesado.', mappedStatus);
         } catch (Exception e) {
             setResponse(500, false, 'Error procesando callback: ' + e.getMessage(), null);
         }
+    }
+
+    private static RestResponse ensureJsonResponse() {
+        RestResponse response = RestContext.response;
+        if (response == null) {
+            response = new RestResponse();
+            RestContext.response = response;
+        }
+        response.addHeader('Content-Type', 'application/json');
+        return response;
+    }
+
+    private static String resolveReference(Map<String, String> values) {
+        return firstNonBlank(
+            new List<String>{
+                values.get('reference'),
+                values.get('referencia'),
+                values.get('nb_referencia'),
+                values.get('id_referencia'),
+                values.get('orderid'),
+                values.get('folio')
+            }
+        );
+    }
+
+    private static String resolveProviderStatusRaw(Map<String, String> values) {
+        return firstNonBlank(
+            new List<String>{
+                values.get('status'),
+                values.get('estatus'),
+                values.get('result'),
+                values.get('resultado'),
+                values.get('response_code'),
+                values.get('response')
+            }
+        );
+    }
+
+    private static String resolveProviderTransactionId(Map<String, String> values) {
+        return firstNonBlank(
+            new List<String>{
+                values.get('id_transaccion'),
+                values.get('idtransaccion'),
+                values.get('transaction_id'),
+                values.get('transactionid'),
+                values.get('id_operacion'),
+                values.get('idoperacion'),
+                values.get('auth')
+            }
+        );
+    }
+
+    private static Payment_Link__c findPaymentLink(String reference) {
+        List<Payment_Link__c> links = [
+            SELECT
+                Id,
+                Reference__c,
+                Status__c,
+                Provider_Transaction_ID__c,
+                Raw_Response__c
+            FROM Payment_Link__c
+            WHERE Reference__c = :reference
+            LIMIT 1
+        ];
+        return links.isEmpty() ? null : links[0];
+    }
+
+    private static void applyCallbackToPaymentLink(
+        Payment_Link__c link,
+        String reference,
+        String providerStatusRaw,
+        String mappedStatus,
+        String providerTransactionId,
+        String rawBody,
+        String normalizedPayload
+    ) {
+        if (!String.isBlank(providerTransactionId)) {
+            link.Provider_Transaction_ID__c = providerTransactionId;
+        }
+        link.Status__c = mappedStatus;
+        link.Raw_Response__c = PolUtil.appendAudit(
+            link.Raw_Response__c,
+            buildAuditEntry(reference, providerStatusRaw, mappedStatus, rawBody, normalizedPayload)
+        );
+        update link;
     }
 
     @TestVisible

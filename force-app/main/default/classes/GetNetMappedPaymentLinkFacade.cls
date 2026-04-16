@@ -136,22 +136,8 @@ public with sharing class GetNetMappedPaymentLinkFacade {
         }
 
         String resolvedObjectApiName = resolveRecordObjectApiName(recordId, objectApiName);
-        String requestedWorkspace = String.isBlank(workspace) ? null : workspace.trim();
-        ObjectMappingConfig mapping = loadActiveMapping(resolvedObjectApiName, requestedWorkspace);
-        if (mapping == null) {
-            if (!String.isBlank(requestedWorkspace)) {
-                throw new AuraHandledException(
-                    'No existe mapping activo para el objeto ' +
-                    resolvedObjectApiName +
-                    ' en el workspace ' +
-                    requestedWorkspace +
-                    '.'
-                );
-            }
-            throw new AuraHandledException(
-                'No existe mapping activo para el objeto ' + resolvedObjectApiName + '.'
-            );
-        }
+        String requestedWorkspace = trimToNull(workspace);
+        ObjectMappingConfig mapping = requireActiveMapping(resolvedObjectApiName, requestedWorkspace);
 
         validateMappingAgainstObject(mapping, resolvedObjectApiName);
         SObject sourceRecord = fetchSourceRecord(recordId, resolvedObjectApiName, mapping);
@@ -159,47 +145,20 @@ public with sharing class GetNetMappedPaymentLinkFacade {
         String referenceValue = readReferenceValue(sourceRecord, mapping.referenceField);
         Decimal amountValue = readAmountValue(sourceRecord, mapping.amountField);
         String currencyValue = normalizeCurrencyCode(mapping.currencyCode, false);
-        String workspaceValue = String.isBlank(mapping.workspace) ? DEFAULT_WORKSPACE : mapping.workspace.trim();
+        String workspaceValue = resolveWorkspace(mapping.workspace);
 
-        MappedRecordContextDto response = new MappedRecordContextDto();
-        response.recordId = recordId;
-        response.objectApiName = resolvedObjectApiName;
-        response.mappingDeveloperName = mapping.developerName;
-        response.referenceField = mapping.referenceField;
-        response.amountField = mapping.amountField;
-        response.reference = referenceValue;
-        response.amount = amountValue;
-        response.currencyCode = currencyValue;
-        response.workspace = workspaceValue;
-        response.concept = String.isBlank(referenceValue)
-            ? 'Pago ' + resolvedObjectApiName
-            : 'Pago ' + resolvedObjectApiName + ' ' + referenceValue;
-        response.customerName = '';
+        MappedRecordContextDto response = buildMappedRecordContextDto(
+            recordId,
+            resolvedObjectApiName,
+            mapping,
+            referenceValue,
+            amountValue,
+            currencyValue,
+            workspaceValue
+        );
 
         Payment_Link__c existing = findPaymentLinkByReference(referenceValue, false);
-        if (existing != null) {
-            response.hasExistingLink = true;
-            response.existingPaymentLinkId = existing.Id;
-            response.existingPaymentUrl = existing.Payment_URL__c;
-            response.existingStatus = existing.Status__c;
-            response.existingMetadataJson = existing.Metadata_JSON__c;
-            response.existingMetadataIndex = existing.Metadata_Index__c;
-            response.currencyCode = String.isBlank(existing.Currency__c)
-                ? response.currencyCode
-                : existing.Currency__c;
-            response.workspace = String.isBlank(existing.Workspace__c)
-                ? response.workspace
-                : existing.Workspace__c;
-            response.amount = existing.Amount__c == null ? response.amount : existing.Amount__c;
-            response.concept = String.isBlank(existing.Concept__c) ? response.concept : existing.Concept__c;
-            response.customerName = String.isBlank(existing.Customer_Name__c)
-                ? response.customerName
-                : existing.Customer_Name__c;
-            response.message = 'Ya existe una liga para esta referencia. Puedes reutilizarla o regenerarla.';
-        } else {
-            response.hasExistingLink = false;
-            response.message = 'Datos precargados desde el mapping activo.';
-        }
+        applyExistingPaymentLinkToContext(response, existing);
 
         return response;
     }
@@ -216,67 +175,58 @@ public with sharing class GetNetMappedPaymentLinkFacade {
         }
 
         String resolvedObjectApiName = resolveRecordObjectApiName(request.recordId, request.objectApiName);
-        String requestedWorkspace = String.isBlank(request.workspace) ? null : request.workspace.trim();
-        ObjectMappingConfig mapping = loadActiveMapping(resolvedObjectApiName, requestedWorkspace);
-        if (mapping == null) {
-            if (!String.isBlank(requestedWorkspace)) {
-                throw new AuraHandledException(
-                    'No existe mapping activo para el objeto ' +
-                    resolvedObjectApiName +
-                    ' en el workspace ' +
-                    requestedWorkspace +
-                    '.'
-                );
-            }
-            throw new AuraHandledException(
-                'No existe mapping activo para el objeto ' + resolvedObjectApiName + '.'
-            );
-        }
+        String requestedWorkspace = trimToNull(request.workspace);
+        ObjectMappingConfig mapping = requireActiveMapping(resolvedObjectApiName, requestedWorkspace);
         validateMappingAgainstObject(mapping, resolvedObjectApiName);
         validateGenerateRequest(request);
 
-        String resolvedWorkspace = String.isBlank(request.workspace)
-            ? (String.isBlank(mapping.workspace) ? DEFAULT_WORKSPACE : mapping.workspace.trim())
-            : request.workspace.trim();
-
-        String currencySource = String.isBlank(request.currencyCode)
-            ? mapping.currencyCode
-            : request.currencyCode;
-        String resolvedCurrency = normalizeCurrencyCode(currencySource, true);
+        String resolvedWorkspace = resolveWorkspace(request.workspace, mapping.workspace);
+        String resolvedCurrency = resolveCurrencyForGeneration(request.currencyCode, mapping.currencyCode);
 
         String reference = request.reference.trim();
         Payment_Link__c existing = findPaymentLinkByReference(reference, false);
         Boolean wasExisting = existing != null;
 
-        Payment_Link__c paymentLink = wasExisting ? existing : new Payment_Link__c();
-        paymentLink.Reference__c = reference;
-        paymentLink.Amount__c = request.amount;
-        paymentLink.Concept__c = request.concept.trim();
-        paymentLink.Customer_Name__c = request.customerName.trim();
-        paymentLink.Workspace__c = resolvedWorkspace;
-        paymentLink.Currency__c = resolvedCurrency;
-        paymentLink.Metadata_JSON__c = request.metadataJson;
-        paymentLink.Status__c = 'Draft';
+        Payment_Link__c paymentLink = buildDraftPaymentLink(
+            wasExisting ? existing : new Payment_Link__c(),
+            request,
+            reference,
+            resolvedWorkspace,
+            resolvedCurrency
+        );
 
         Payment_Link__c generated = PaymentLinkService.generateLinkFromDraft(paymentLink);
-
-        GenerateMappedPaymentLinkResultDto response = new GenerateMappedPaymentLinkResultDto();
-        response.paymentLinkId = generated.Id;
-        response.paymentUrl = generated.Payment_URL__c;
-        response.status = generated.Status__c;
-        response.workspace = generated.Workspace__c;
-        response.currencyCode = generated.Currency__c;
-        response.metadataJson = generated.Metadata_JSON__c;
-        response.metadataIndex = generated.Metadata_Index__c;
-        response.wasExisting = wasExisting;
-        response.message = wasExisting
-            ? 'La referencia ya existia; la liga fue actualizada y generada nuevamente.'
-            : 'Liga generada correctamente.';
-        return response;
+        return buildGenerateResponseDto(generated, wasExisting);
     }
 
     @AuraEnabled
     public static GenerateMappedPaymentLinkResultDto generateFromMappedRecordDirect(
+        Id recordId,
+        String objectApiName,
+        String reference,
+        Decimal amount,
+        String currencyCode,
+        String concept,
+        String customerName,
+        String workspace,
+        String metadataJson
+    ) {
+        return generateFromMappedRecord(
+            toGenerateMappedPaymentLinkRequest(
+                recordId,
+                objectApiName,
+                reference,
+                amount,
+                currencyCode,
+                concept,
+                customerName,
+                workspace,
+                metadataJson
+            )
+        );
+    }
+
+    private static GenerateMappedPaymentLinkRequestDto toGenerateMappedPaymentLinkRequest(
         Id recordId,
         String objectApiName,
         String reference,
@@ -297,7 +247,145 @@ public with sharing class GetNetMappedPaymentLinkFacade {
         request.customerName = customerName;
         request.workspace = workspace;
         request.metadataJson = metadataJson;
-        return generateFromMappedRecord(request);
+        return request;
+    }
+
+    private static ObjectMappingConfig requireActiveMapping(String objectApiName, String requestedWorkspace) {
+        ObjectMappingConfig mapping = loadActiveMapping(objectApiName, requestedWorkspace);
+        if (mapping != null) {
+            return mapping;
+        }
+
+        if (!String.isBlank(requestedWorkspace)) {
+            throw new AuraHandledException(
+                'No existe mapping activo para el objeto ' +
+                objectApiName +
+                ' en el workspace ' +
+                requestedWorkspace +
+                '.'
+            );
+        }
+
+        throw new AuraHandledException(
+            'No existe mapping activo para el objeto ' + objectApiName + '.'
+        );
+    }
+
+    private static MappedRecordContextDto buildMappedRecordContextDto(
+        Id recordId,
+        String objectApiName,
+        ObjectMappingConfig mapping,
+        String reference,
+        Decimal amount,
+        String currencyCode,
+        String workspace
+    ) {
+        MappedRecordContextDto response = new MappedRecordContextDto();
+        response.recordId = recordId;
+        response.objectApiName = objectApiName;
+        response.mappingDeveloperName = mapping.developerName;
+        response.referenceField = mapping.referenceField;
+        response.amountField = mapping.amountField;
+        response.reference = reference;
+        response.amount = amount;
+        response.currencyCode = currencyCode;
+        response.workspace = workspace;
+        response.concept = buildDefaultConcept(objectApiName, reference);
+        response.customerName = '';
+        response.hasExistingLink = false;
+        response.message = 'Datos precargados desde el mapping activo.';
+        return response;
+    }
+
+    private static void applyExistingPaymentLinkToContext(
+        MappedRecordContextDto response,
+        Payment_Link__c existingPaymentLink
+    ) {
+        if (existingPaymentLink == null) {
+            return;
+        }
+
+        response.hasExistingLink = true;
+        response.existingPaymentLinkId = existingPaymentLink.Id;
+        response.existingPaymentUrl = existingPaymentLink.Payment_URL__c;
+        response.existingStatus = existingPaymentLink.Status__c;
+        response.existingMetadataJson = existingPaymentLink.Metadata_JSON__c;
+        response.existingMetadataIndex = existingPaymentLink.Metadata_Index__c;
+        response.currencyCode = String.isBlank(existingPaymentLink.Currency__c)
+            ? response.currencyCode
+            : existingPaymentLink.Currency__c;
+        response.workspace = String.isBlank(existingPaymentLink.Workspace__c)
+            ? response.workspace
+            : existingPaymentLink.Workspace__c;
+        response.amount = existingPaymentLink.Amount__c == null ? response.amount : existingPaymentLink.Amount__c;
+        response.concept = String.isBlank(existingPaymentLink.Concept__c)
+            ? response.concept
+            : existingPaymentLink.Concept__c;
+        response.customerName = String.isBlank(existingPaymentLink.Customer_Name__c)
+            ? response.customerName
+            : existingPaymentLink.Customer_Name__c;
+        response.message = 'Ya existe una liga para esta referencia. Puedes reutilizarla o regenerarla.';
+    }
+
+    private static Payment_Link__c buildDraftPaymentLink(
+        Payment_Link__c paymentLink,
+        GenerateMappedPaymentLinkRequestDto request,
+        String reference,
+        String workspace,
+        String currencyCode
+    ) {
+        paymentLink.Reference__c = reference;
+        paymentLink.Amount__c = request.amount;
+        paymentLink.Concept__c = request.concept.trim();
+        paymentLink.Customer_Name__c = request.customerName.trim();
+        paymentLink.Workspace__c = workspace;
+        paymentLink.Currency__c = currencyCode;
+        paymentLink.Metadata_JSON__c = request.metadataJson;
+        paymentLink.Status__c = 'Draft';
+        return paymentLink;
+    }
+
+    private static GenerateMappedPaymentLinkResultDto buildGenerateResponseDto(
+        Payment_Link__c generated,
+        Boolean wasExisting
+    ) {
+        GenerateMappedPaymentLinkResultDto response = new GenerateMappedPaymentLinkResultDto();
+        response.paymentLinkId = generated.Id;
+        response.paymentUrl = generated.Payment_URL__c;
+        response.status = generated.Status__c;
+        response.workspace = generated.Workspace__c;
+        response.currencyCode = generated.Currency__c;
+        response.metadataJson = generated.Metadata_JSON__c;
+        response.metadataIndex = generated.Metadata_Index__c;
+        response.wasExisting = wasExisting;
+        response.message = wasExisting
+            ? 'La referencia ya existia; la liga fue actualizada y generada nuevamente.'
+            : 'Liga generada correctamente.';
+        return response;
+    }
+
+    private static String resolveCurrencyForGeneration(String requestCurrencyCode, String mappingCurrencyCode) {
+        String currencySource = String.isBlank(requestCurrencyCode) ? mappingCurrencyCode : requestCurrencyCode;
+        return normalizeCurrencyCode(currencySource, true);
+    }
+
+    private static String buildDefaultConcept(String objectApiName, String reference) {
+        return String.isBlank(reference) ? 'Pago ' + objectApiName : 'Pago ' + objectApiName + ' ' + reference;
+    }
+
+    private static String resolveWorkspace(String requestWorkspace, String mappingWorkspace) {
+        if (!String.isBlank(requestWorkspace)) {
+            return requestWorkspace.trim();
+        }
+        return resolveWorkspace(mappingWorkspace);
+    }
+
+    private static String resolveWorkspace(String rawWorkspace) {
+        return String.isBlank(rawWorkspace) ? DEFAULT_WORKSPACE : rawWorkspace.trim();
+    }
+
+    private static String trimToNull(String value) {
+        return String.isBlank(value) ? null : value.trim();
     }
 
     private static String resolveRecordObjectApiName(Id recordId, String objectApiName) {
@@ -318,50 +406,20 @@ public with sharing class GetNetMappedPaymentLinkFacade {
         String normalizedWorkspace = normalizeKey(workspace);
 
         if (Test.isRunningTest() && testMappingOverridesByObject != null) {
-            if (!String.isBlank(normalizedWorkspace)) {
-                return testMappingOverridesByObject.get(buildMappingOverrideKey(normalizedObject, normalizedWorkspace));
-            }
-
-            ObjectMappingConfig defaultOverride = testMappingOverridesByObject.get(
-                buildMappingOverrideKey(normalizedObject, normalizeKey(DEFAULT_WORKSPACE))
-            );
-            if (defaultOverride != null) {
-                return defaultOverride;
-            }
-
-            String objectPrefix = normalizedObject + '|';
-            for (String key : testMappingOverridesByObject.keySet()) {
-                if (key.startsWith(objectPrefix)) {
-                    return testMappingOverridesByObject.get(key);
-                }
-            }
-            return null;
+            return loadTestActiveMapping(normalizedObject, normalizedWorkspace);
         }
 
-        List<Payment_Link_Object_Mapping__mdt> rows = [
-            SELECT
-                DeveloperName,
-                Object_API_Name__c,
-                Reference_Field__c,
-                Amount_Field__c,
-                Currency__c,
-                Workspace__c
-            FROM Payment_Link_Object_Mapping__mdt
-            WHERE Active__c = true AND Object_API_Name__c = :objectApiName
-            ORDER BY Workspace__c ASC, DeveloperName ASC
-        ];
+        List<Payment_Link_Object_Mapping__mdt> rows = queryActiveMappings(objectApiName);
 
         if (rows.isEmpty()) {
             return null;
         }
 
         if (!String.isBlank(normalizedWorkspace)) {
-            List<Payment_Link_Object_Mapping__mdt> matchingWorkspaceRows = new List<Payment_Link_Object_Mapping__mdt>();
-            for (Payment_Link_Object_Mapping__mdt row : rows) {
-                if (normalizeKey(row.Workspace__c) == normalizedWorkspace) {
-                    matchingWorkspaceRows.add(row);
-                }
-            }
+            List<Payment_Link_Object_Mapping__mdt> matchingWorkspaceRows = filterMappingsByWorkspace(
+                rows,
+                normalizedWorkspace
+            );
 
             if (matchingWorkspaceRows.size() > 1) {
                 throw new AuraHandledException(
@@ -380,12 +438,10 @@ public with sharing class GetNetMappedPaymentLinkFacade {
             return null;
         }
 
-        List<Payment_Link_Object_Mapping__mdt> defaultWorkspaceRows = new List<Payment_Link_Object_Mapping__mdt>();
-        for (Payment_Link_Object_Mapping__mdt row : rows) {
-            if (normalizeKey(row.Workspace__c) == normalizeKey(DEFAULT_WORKSPACE)) {
-                defaultWorkspaceRows.add(row);
-            }
-        }
+        List<Payment_Link_Object_Mapping__mdt> defaultWorkspaceRows = filterMappingsByWorkspace(
+            rows,
+            normalizeKey(DEFAULT_WORKSPACE)
+        );
 
         if (defaultWorkspaceRows.size() > 1) {
             throw new AuraHandledException(
@@ -403,6 +459,56 @@ public with sharing class GetNetMappedPaymentLinkFacade {
 
         Payment_Link_Object_Mapping__mdt row = rows[0];
         return toObjectMappingConfig(row);
+    }
+
+    private static ObjectMappingConfig loadTestActiveMapping(String normalizedObject, String normalizedWorkspace) {
+        if (!String.isBlank(normalizedWorkspace)) {
+            return testMappingOverridesByObject.get(buildMappingOverrideKey(normalizedObject, normalizedWorkspace));
+        }
+
+        ObjectMappingConfig defaultOverride = testMappingOverridesByObject.get(
+            buildMappingOverrideKey(normalizedObject, normalizeKey(DEFAULT_WORKSPACE))
+        );
+        if (defaultOverride != null) {
+            return defaultOverride;
+        }
+
+        String objectPrefix = normalizedObject + '|';
+        for (String key : testMappingOverridesByObject.keySet()) {
+            if (key.startsWith(objectPrefix)) {
+                return testMappingOverridesByObject.get(key);
+            }
+        }
+
+        return null;
+    }
+
+    private static List<Payment_Link_Object_Mapping__mdt> queryActiveMappings(String objectApiName) {
+        return [
+            SELECT
+                DeveloperName,
+                Object_API_Name__c,
+                Reference_Field__c,
+                Amount_Field__c,
+                Currency__c,
+                Workspace__c
+            FROM Payment_Link_Object_Mapping__mdt
+            WHERE Active__c = true AND Object_API_Name__c = :objectApiName
+            ORDER BY Workspace__c ASC, DeveloperName ASC
+        ];
+    }
+
+    private static List<Payment_Link_Object_Mapping__mdt> filterMappingsByWorkspace(
+        List<Payment_Link_Object_Mapping__mdt> rows,
+        String normalizedWorkspace
+    ) {
+        List<Payment_Link_Object_Mapping__mdt> filteredRows = new List<Payment_Link_Object_Mapping__mdt>();
+        for (Payment_Link_Object_Mapping__mdt row : rows) {
+            if (normalizeKey(row.Workspace__c) == normalizedWorkspace) {
+                filteredRows.add(row);
+            }
+        }
+        return filteredRows;
     }
 
     private static ObjectMappingConfig toObjectMappingConfig(Payment_Link_Object_Mapping__mdt row) {
