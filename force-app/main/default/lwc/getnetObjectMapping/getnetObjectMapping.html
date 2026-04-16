@@ -1,0 +1,116 @@
+<template>
+    <div class="section-container">
+        <template if:true={isMappingBusy}>
+            <lightning-spinner alternative-text="Cargando object mapping" size="small"></lightning-spinner>
+        </template>
+
+        <lightning-layout multiple-rows>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Developer Name (auto)"
+                    value={mappingForm.developerName}
+                    name="developerName"
+                    disabled
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Object"
+                    placeholder="Select object"
+                    options={mappingObjectOptions}
+                    value={mappingForm.objectApiName}
+                    name="objectApiName"
+                    onchange={handleMappingChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Reference Field"
+                    placeholder="Select reference field"
+                    options={mappingReferenceFieldOptions}
+                    value={mappingForm.referenceField}
+                    name="referenceField"
+                    onchange={handleMappingChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Amount Field"
+                    placeholder="Select amount field"
+                    options={mappingAmountFieldOptions}
+                    value={mappingForm.amountField}
+                    name="amountField"
+                    onchange={handleMappingChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Currency"
+                    options={currencyOptions}
+                    value={mappingForm.currency}
+                    name="currency"
+                    placeholder="Select currency"
+                    onchange={handleMappingChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Workspace"
+                    options={mappingWorkspaceOptions}
+                    value={mappingForm.workspace}
+                    name="workspace"
+                    placeholder="Select workspace"
+                    onchange={handleMappingChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Active"
+                    type="checkbox"
+                    checked={mappingForm.active}
+                    name="active"
+                    onchange={handleMappingChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-button-group>
+                    <lightning-button
+                        variant="brand"
+                        label="Save Mapping"
+                        onclick={handleObjectMappingSave}
+                        disabled={isMappingBusy}
+                    ></lightning-button>
+                    <lightning-button
+                        label="New"
+                        onclick={handleMappingNew}
+                        disabled={isMappingBusy}
+                    ></lightning-button>
+                    <lightning-button
+                        label="Refresh"
+                        onclick={handleObjectMappingRefresh}
+                        disabled={isMappingBusy}
+                    ></lightning-button>
+                </lightning-button-group>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <lightning-layout multiple-rows>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Filtrar tabla por Workspace"
+                    value={mappingWorkspaceFilter}
+                    options={mappingWorkspaceFilterOptions}
+                    onchange={handleMappingWorkspaceFilterChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <lightning-datatable
+            key-field="id"
+            data={filteredMappingRows}
+            columns={mappingColumns}
+            hide-checkbox-column
+            onrowaction={handleMappingRowAction}
+        ></lightning-datatable>
+    </div>
+</template>

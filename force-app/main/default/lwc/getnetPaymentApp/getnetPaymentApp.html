@@ -1,0 +1,33 @@
+<template>
+    <lightning-card title="GetNet Payment" icon-name="custom:custom63">
+        <div class="app-container">
+            <lightning-tabset variant="scoped">
+                <lightning-tab label="Authorization" value="authorization">
+                    <div class="tab-section">
+                        <c-getnet-setup></c-getnet-setup>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab label="Object Mapping" value="object-mapping">
+                    <div class="tab-section">
+                        <c-getnet-object-mapping></c-getnet-object-mapping>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab label="Quick Payment" value="quick-payment">
+                    <div class="tab-section">
+                        <c-getnet-quick-payment></c-getnet-quick-payment>
+                    </div>
+                </lightning-tab>
+
+                <lightning-tab label="Metadata Configuration" value="metadata-configuration">
+                    <div class="tab-section">
+                        <c-getnet-metadata-configuration
+                            onmetadatachanged={handleMetadataWorkspaceChanged}
+                        ></c-getnet-metadata-configuration>
+                    </div>
+                </lightning-tab>
+            </lightning-tabset>
+        </div>
+    </lightning-card>
+</template>

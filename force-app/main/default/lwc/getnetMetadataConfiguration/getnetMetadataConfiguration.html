@@ -1,0 +1,136 @@
+<template>
+    <div class="section-container">
+        <template if:true={isMetadataConfigBusy}>
+            <lightning-spinner alternative-text="Cargando metadata configuration" size="small"></lightning-spinner>
+        </template>
+
+        <lightning-layout multiple-rows>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Developer Name (auto)"
+                    value={metadataConfigForm.developerName}
+                    disabled
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Workspace"
+                    value={metadataConfigForm.workspaceSelection}
+                    name="workspaceSelection"
+                    options={metadataWorkspaceComboboxOptions}
+                    placeholder="Selecciona un workspace"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <template if:true={isNewMetadataWorkspaceSelected}>
+                <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                    <lightning-input
+                        label="Nuevo Workspace"
+                        value={metadataConfigForm.newWorkspace}
+                        name="newWorkspace"
+                        onchange={handleMetadataConfigChange}
+                    ></lightning-input>
+                </lightning-layout-item>
+            </template>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Field Label"
+                    value={metadataConfigForm.fieldLabel}
+                    name="fieldLabel"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Field API Name"
+                    value={metadataConfigForm.fieldApiName}
+                    name="fieldApiName"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Data Type"
+                    options={dataTypeOptions}
+                    value={metadataConfigForm.dataType}
+                    name="dataType"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="XML Tag"
+                    value={metadataConfigForm.xmlTag}
+                    name="xmlTag"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Sort Order"
+                    type="number"
+                    value={metadataConfigForm.sortOrder}
+                    name="sortOrder"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Required"
+                    type="checkbox"
+                    checked={metadataConfigForm.required}
+                    name="required"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Active"
+                    type="checkbox"
+                    checked={metadataConfigForm.active}
+                    name="active"
+                    onchange={handleMetadataConfigChange}
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-button-group>
+                    <lightning-button
+                        variant="brand"
+                        label="Save Configuration"
+                        onclick={handleMetadataConfigSave}
+                        disabled={isMetadataConfigBusy}
+                    ></lightning-button>
+                    <lightning-button
+                        label="New"
+                        onclick={handleMetadataConfigNew}
+                        disabled={isMetadataConfigBusy}
+                    ></lightning-button>
+                    <lightning-button
+                        label="Refresh"
+                        onclick={handleMetadataConfigRefresh}
+                        disabled={isMetadataConfigBusy}
+                    ></lightning-button>
+                </lightning-button-group>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <lightning-layout multiple-rows>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Filtrar tabla por Workspace"
+                    value={metadataWorkspaceFilter}
+                    options={metadataWorkspaceFilterOptions}
+                    onchange={handleMetadataWorkspaceFilterChange}
+                ></lightning-combobox>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <lightning-datatable
+            key-field="id"
+            data={filteredMetadataConfigRows}
+            columns={metadataConfigColumns}
+            hide-checkbox-column
+            onrowaction={handleMetadataConfigRowAction}
+        ></lightning-datatable>
+    </div>
+</template>

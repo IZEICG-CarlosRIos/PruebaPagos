@@ -23,8 +23,16 @@
         <value xsi:type="xsd:string">/gen</value>
     </values>
     <values>
+        <field>MaxRetries__c</field>
+        <value xsi:type="xsd:double">2</value>
+    </values>
+    <values>
         <field>Password__c</field>
         <value xsi:type="xsd:string">SECRETO</value>
+    </values>
+    <values>
+        <field>TimeoutMs__c</field>
+        <value xsi:type="xsd:double">15000</value>
     </values>
     <values>
         <field>User__c</field>

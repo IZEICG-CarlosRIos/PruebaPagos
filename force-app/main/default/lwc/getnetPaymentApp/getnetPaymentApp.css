@@ -1,0 +1,26 @@
+.app-container {
+    padding: 0.5rem;
+}
+
+.tab-section {
+    padding: 0.5rem 0;
+}
+
+.progress-panel {
+    border: 1px solid #d8dde6;
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    background-color: #f7f9fb;
+}
+
+.panel-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.panel-hint {
+    margin-top: 0.5rem;
+    color: #3e3e3c;
+    font-size: 0.8125rem;
+}

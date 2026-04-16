@@ -1,0 +1,202 @@
+<template>
+    <div class="section-container">
+        <template if:true={isBusy}>
+            <lightning-spinner alternative-text="Generando payment link" size="small"></lightning-spinner>
+        </template>
+
+        <div class="progress-panel">
+            <p class="panel-title">Generate Payment Link</p>
+            <p class="panel-hint">{statusMessage}</p>
+        </div>
+
+        <lightning-layout multiple-rows>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Reference"
+                    name="reference"
+                    data-field="reference"
+                    value={form.reference}
+                    oninput={handleBaseFieldChange}
+                    onchange={handleBaseFieldChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Amount"
+                    name="amount"
+                    data-field="amount"
+                    type="number"
+                    value={form.amount}
+                    oninput={handleBaseFieldChange}
+                    onchange={handleBaseFieldChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Currency"
+                    name="currency"
+                    data-field="currency"
+                    options={currencyOptions}
+                    value={form.currency}
+                    onchange={handleBaseFieldChange}
+                    required
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Concept"
+                    name="concept"
+                    data-field="concept"
+                    value={form.concept}
+                    oninput={handleBaseFieldChange}
+                    onchange={handleBaseFieldChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Customer Name"
+                    name="customerName"
+                    data-field="customerName"
+                    value={form.customerName}
+                    oninput={handleBaseFieldChange}
+                    onchange={handleBaseFieldChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Workspace"
+                    name="workspace"
+                    data-field="workspace"
+                    value={form.workspace}
+                    options={workspaceOptions}
+                    onchange={handleBaseFieldChange}
+                    required
+                ></lightning-combobox>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <template if:true={hasMetadataFields}>
+            <div class="progress-panel">
+                <p class="panel-title">Dynamic Metadata</p>
+                <lightning-layout multiple-rows>
+                    <template for:each={metadataFields} for:item="field">
+                        <lightning-layout-item
+                            key={field.apiName}
+                            size="12"
+                            medium-device-size="6"
+                            padding="around-small"
+                        >
+                            <template if:true={field.isText}>
+                                <lightning-input
+                                    label={field.label}
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    required={field.required}
+                                    onchange={handleMetadataChange}
+                                ></lightning-input>
+                            </template>
+                            <template if:true={field.isNumber}>
+                                <lightning-input
+                                    label={field.label}
+                                    type="number"
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    required={field.required}
+                                    onchange={handleMetadataChange}
+                                ></lightning-input>
+                            </template>
+                            <template if:true={field.isDate}>
+                                <lightning-input
+                                    label={field.label}
+                                    type="date"
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    required={field.required}
+                                    onchange={handleMetadataChange}
+                                ></lightning-input>
+                            </template>
+                            <template if:true={field.isBoolean}>
+                                <lightning-combobox
+                                    label={field.label}
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    options={quickPaymentBooleanOptions}
+                                    required={field.required}
+                                    onchange={handleMetadataChange}
+                                ></lightning-combobox>
+                            </template>
+                        </lightning-layout-item>
+                    </template>
+                </lightning-layout>
+            </div>
+        </template>
+
+        <div class="actions-row">
+            <lightning-button label="Cancel" onclick={handleClose} disabled={isBusy}></lightning-button>
+            <lightning-button
+                variant="brand"
+                label="Generate Payment Link"
+                onclick={handleGeneratePaymentLink}
+                disabled={isBusy}
+            ></lightning-button>
+        </div>
+
+        <template if:true={hasActiveResult}>
+            <div class="result-panel">
+                <div class="result-hero">
+                    <div class="result-hero-left">
+                        <span class="result-icon-wrap">
+                            <lightning-icon
+                                icon-name="utility:link"
+                                size="x-small"
+                                alternative-text="Payment Link"
+                            ></lightning-icon>
+                        </span>
+                        <div>
+                            <p class="result-title">Payment Link</p>
+                            <p class="result-label">Generated link</p>
+                        </div>
+                    </div>
+                    <p class="result-status-pill">Status: {activeResult.status}</p>
+                </div>
+
+                <div class="result-url-box">
+                    <p class="result-url-text">
+                        <lightning-formatted-url
+                            value={activeResult.paymentUrl}
+                            label={activeResult.paymentUrl}
+                            target="_blank"
+                        ></lightning-formatted-url>
+                    </p>
+                </div>
+
+                <div class="result-meta-grid">
+                    <div class="result-meta-item">
+                        <p class="meta-label">Workspace</p>
+                        <p class="meta-value">{activeResult.workspace}</p>
+                    </div>
+                    <div class="result-meta-item">
+                        <p class="meta-label">Currency</p>
+                        <p class="meta-value">{activeResult.currency}</p>
+                    </div>
+                </div>
+
+                <template if:true={canShareLink}>
+                    <div class="result-actions">
+                        <lightning-button label="Copy" onclick={handleCopyLink}></lightning-button>
+                        <lightning-button label="Back" onclick={handleClose}></lightning-button>
+                    </div>
+                    <p class="send-title">Send Payment Link</p>
+                    <div class="share-actions">
+                        <lightning-button label="Send via WhatsApp" onclick={handleSendViaWhatsApp}></lightning-button>
+                        <lightning-button label="Send via Email" onclick={handleSendViaEmail}></lightning-button>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

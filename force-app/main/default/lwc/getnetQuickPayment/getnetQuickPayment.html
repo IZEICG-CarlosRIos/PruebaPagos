@@ -1,0 +1,159 @@
+<template>
+    <div class="section-container">
+        <template if:true={isQuickPaymentBusy}>
+            <lightning-spinner alternative-text="Generando quick payment" size="small"></lightning-spinner>
+        </template>
+
+        <lightning-layout multiple-rows>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Reference"
+                    value={quickPaymentForm.reference}
+                    name="reference"
+                    data-field="reference"
+                    onchange={handleQuickPaymentChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Amount"
+                    type="number"
+                    value={quickPaymentForm.amount}
+                    name="amount"
+                    data-field="amount"
+                    onchange={handleQuickPaymentChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Currency"
+                    options={currencyOptions}
+                    value={quickPaymentForm.currency}
+                    name="currency"
+                    data-field="currency"
+                    onchange={handleQuickPaymentChange}
+                    required
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Concept"
+                    value={quickPaymentForm.concept}
+                    name="concept"
+                    data-field="concept"
+                    onchange={handleQuickPaymentChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-input
+                    label="Customer Name"
+                    value={quickPaymentForm.customerName}
+                    name="customerName"
+                    data-field="customerName"
+                    onchange={handleQuickPaymentChange}
+                    required
+                ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" medium-device-size="6" padding="around-small">
+                <lightning-combobox
+                    label="Workspace"
+                    options={quickPaymentWorkspaceOptions}
+                    value={quickPaymentForm.workspace}
+                    name="workspace"
+                    data-field="workspace"
+                    onchange={handleQuickPaymentChange}
+                    required
+                ></lightning-combobox>
+            </lightning-layout-item>
+            <lightning-layout-item size="12" padding="around-small">
+                <lightning-button
+                    variant="brand"
+                    label="Generate Payment Link"
+                    onclick={handleQuickPaymentGenerate}
+                    disabled={isQuickPaymentBusy}
+                ></lightning-button>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <div class="progress-panel">
+            <p class="panel-title">Quick Payment Status</p>
+            <p class="panel-hint">{quickPaymentStatusMessage}</p>
+        </div>
+
+        <template if:true={hasQuickPaymentMetadataFields}>
+            <div class="progress-panel">
+                <p class="panel-title">Dynamic Metadata</p>
+                <lightning-layout multiple-rows>
+                    <template for:each={quickPaymentMetadataFields} for:item="field">
+                        <lightning-layout-item
+                            key={field.apiName}
+                            size="12"
+                            medium-device-size="6"
+                            padding="around-small"
+                        >
+                            <template if:true={field.isText}>
+                                <lightning-input
+                                    label={field.label}
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    required={field.required}
+                                    onchange={handleQuickPaymentMetadataValueChange}
+                                ></lightning-input>
+                            </template>
+                            <template if:true={field.isNumber}>
+                                <lightning-input
+                                    label={field.label}
+                                    type="number"
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    required={field.required}
+                                    onchange={handleQuickPaymentMetadataValueChange}
+                                ></lightning-input>
+                            </template>
+                            <template if:true={field.isDate}>
+                                <lightning-input
+                                    label={field.label}
+                                    type="date"
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    required={field.required}
+                                    onchange={handleQuickPaymentMetadataValueChange}
+                                ></lightning-input>
+                            </template>
+                            <template if:true={field.isBoolean}>
+                                <lightning-combobox
+                                    label={field.label}
+                                    data-api-name={field.apiName}
+                                    value={field.value}
+                                    options={quickPaymentBooleanOptions}
+                                    required={field.required}
+                                    onchange={handleQuickPaymentMetadataValueChange}
+                                ></lightning-combobox>
+                            </template>
+                        </lightning-layout-item>
+                    </template>
+                </lightning-layout>
+            </div>
+        </template>
+
+        <template if:true={hasQuickPaymentResult}>
+            <div class="progress-panel">
+                <p class="panel-title">Generated Payment Link</p>
+                <p class="panel-hint">Status: {quickPaymentResult.status}</p>
+                <p class="panel-hint">Workspace: {quickPaymentResult.workspace}</p>
+                <p class="panel-hint">Currency: {quickPaymentResult.currency}</p>
+                <p class="panel-hint">
+                    URL:
+                    <lightning-formatted-url
+                        value={quickPaymentResult.paymentUrl}
+                        label={quickPaymentResult.paymentUrl}
+                        target="_blank"
+                    ></lightning-formatted-url>
+                </p>
+            </div>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,114 @@
+<template>
+    <div class="section-container">
+        <template if:true={isAuthorizationBusy}>
+            <lightning-spinner alternative-text="Cargando autorizacion" size="small"></lightning-spinner>
+        </template>
+
+        <div class="auth-grid">
+            <section class="auth-card auth-form-card">
+                <div class="card-header">
+                    <lightning-icon icon-name="utility:identity" size="small" class="header-icon"></lightning-icon>
+                    <h2 class="card-title">Credentials Settings Form</h2>
+                </div>
+
+                <lightning-layout multiple-rows>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-combobox
+                            label="Workspace"
+                            value={authorizationWorkspaceSelection}
+                            options={authorizationWorkspaceComboboxOptions}
+                            placeholder="Select workspace"
+                            onchange={handleAuthorizationWorkspaceChange}
+                            disabled={isAuthorizationBusy}
+                        ></lightning-combobox>
+                    </lightning-layout-item>
+                    <template if:true={isNewAuthorizationWorkspaceSelected}>
+                        <lightning-layout-item size="12" padding="around-small">
+                            <lightning-input
+                                label="Nuevo Workspace"
+                                value={authorizationNewWorkspace}
+                                onchange={handleAuthorizationNewWorkspaceChange}
+                                disabled={isAuthorizationBusy}
+                            ></lightning-input>
+                        </lightning-layout-item>
+                    </template>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-input
+                            label="Company ID"
+                            value={authForm.companyId}
+                            name="companyId"
+                            onchange={handleAuthChange}
+                        ></lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-input
+                            label="Branch ID"
+                            value={authForm.branchId}
+                            name="branchId"
+                            onchange={handleAuthChange}
+                        ></lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-input
+                            label="User"
+                            value={authForm.user}
+                            name="user"
+                            onchange={handleAuthChange}
+                        ></lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-input
+                            label="Password"
+                            type="password"
+                            value={authForm.password}
+                            name="password"
+                            onchange={handleAuthChange}
+                        ></lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-input
+                            label="Encryption Key"
+                            value={authForm.encryptionKey}
+                            name="encryptionKey"
+                            onchange={handleAuthChange}
+                        ></lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-input
+                            label="Data0"
+                            value={authForm.data0}
+                            name="data0"
+                            onchange={handleAuthChange}
+                        ></lightning-input>
+                    </lightning-layout-item>
+                    <lightning-layout-item size="12" padding="around-small">
+                        <lightning-button
+                            variant="brand"
+                            label="Save"
+                            title="Guardar Authorization"
+                            onclick={handleAuthorizationSave}
+                            disabled={isSaveDisabled}
+                        ></lightning-button>
+                    </lightning-layout-item>
+                </lightning-layout>
+            </section>
+
+            <aside class="auth-card auth-progress-card">
+                <div class="card-header">
+                    <lightning-icon icon-name="utility:change_record_type" size="small" class="header-icon"></lightning-icon>
+                    <h2 class="card-title">Authentication Progress</h2>
+                </div>
+                <div class="progress-content">
+                    <p class="progress-description">
+                        Complete all the necessary fields to start using our quick payments feature
+                    </p>
+                    <div class="progress-ring" style={progressRingStyle}>
+                        <div class="progress-ring-inner"></div>
+                    </div>
+                    <p class="progress-percent">{completionPercentage}%</p>
+                    <p class={progressSummaryClass}>{progressSummaryMessage}</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+</template>
